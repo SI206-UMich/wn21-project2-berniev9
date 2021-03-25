@@ -77,8 +77,20 @@ def get_book_summary(book_url):
     You can easily capture CSS selectors with your browser's inspector window.
     Make sure to strip() any newlines from the book title and number of pages.
     """
+    r = requests.get(book_url)
+    soup = BeautifulSoup(r.text, "html.parser")
+    div = soup.find('div', id="metacol")
+    h1 = div.find('h1', id="bookTitle") 
+    title = h1.text.strip()
+    a = div.find('a',class_="authorName")
+    author =a.text.strip()
+    span = div.find('span',itemprop="numberOfPages")
+    pages = span.text.strip()
 
-    pass
+    new_tuple = (title,author,pages)
+
+    return new_tuple
+
 
 
 def summarize_best_books(filepath):
@@ -92,9 +104,26 @@ def summarize_best_books(filepath):
     ("Fiction", "The Testaments (The Handmaid's Tale, #2)", "https://www.goodreads.com/choiceawards/best-fiction-books-2020") 
     to your list of tuples.
     """
-    pass
+    new_list = []
+    soup = BeautifulSoup(filepath, "html.parser")
+    div = soup.find('div', class_="categoryContainer")
+    clear = div.find_all('div', class_="category clearFix")
+    for book in clear:
+        #category
+        categor = book.find('h4')
+        categ = categor.text.strip()
+        #link
+        link = book.find('a')
+        link1 = link.get('href',None).strip()
+        #Title
+        r = requests.get(link1)
+        soup2 = BeautifulSoup(r.text,"html.parser")
+        title = soup2.find('a', class_="winningTitle choice gcaBookTitle")
 
+        new_tuple = (categ,title.text.strip(),link1)
+        new_list.append(new_tuple)
 
+    return new_list
 def write_csv(data, filename):
     """
     Write a function that takes in a list of tuples (called data, i.e. the
@@ -152,23 +181,25 @@ class TestCases(unittest.TestCase):
     #     self.assertEqual(soup1[19],('Harry, a History: The True Story of a Boy Wizard, His Fans, and Life Inside the Harry Potter Phenomenon', 'Melissa Anelli'))
 
 
-    def test_get_search_links(self):
-        # check that TestCases.search_urls is a list
-        # leng = len(self.search_urls)
-        # for i in leng:
+    # def test_get_search_links(self):
+    #     # check that TestCases.search_urls is a list
+    #     # leng = len(self.search_urls)
+    #     # for i in leng:
 
-        # check that the length of TestCases.search_urls is correct (10 URLs)
-        self.assertEqual(len(self.search_urls), 10)
-        # check that each URL in the TestCases.search_urls is a string
-        # check that each URL contains the correct url for Goodreads.com followed by /book/show/
+    #     # check that the length of TestCases.search_urls is correct (10 URLs)
+    #     self.assertEqual(len(self.search_urls), 10)
+    #     # check that each URL in the TestCases.search_urls is a string
+    #     # check that each URL contains the correct url for Goodreads.com followed by /book/show/
 
 
     # def test_get_book_summary(self):
     #     # create a local variable – summaries – a list containing the results from get_book_summary()
+    #     summaries = []
     #     # for each URL in TestCases.search_urls (should be a list of tuples)
-
+    #     for i in self.search_urls:
+    #         summaries.append(get_book_summary(i))
     #     # check that the number of book summaries is correct (10)
-
+    #     self.assertEqual(len(summaries),10)
     #         # check that each item in the list is a tuple
 
     #         # check that each tuple has 3 elements
@@ -178,20 +209,30 @@ class TestCases(unittest.TestCase):
     #         # check that the third element in the tuple, i.e. pages is an int
 
     #         # check that the first book in the search has 337 pages
+    #     self.assertEqual(summaries[0][2],'337 pages')
 
 
-    # def test_summarize_best_books(self):
-    #     # call summarize_best_books and save it to a variable
+    def test_summarize_best_books(self):
+        # call summarize_best_books and save it to a variable
+        f = open('best_books_2020.htm', 'r')
+        r = f.read()
+        f.close()
+        summary = summarize_best_books(r)
+        # check that we have the right number of best books (20)
+        self.assertEqual(len(summary),20)
+            # assert each item in the list of best books is a tuple
 
-    #     # check that we have the right number of best books (20)
+            # check that each tuple has a length of 3
 
-    #         # assert each item in the list of best books is a tuple
+        # check that the first tuple is made up of the following 3 strings:'Fiction', "The Midnight Library", 'https://www.goodreads.com/choiceawards/best-fiction-books-2020'
+        self.assertEqual(summary[0][0], 'Fiction')
+        self.assertEqual(summary[0][1], 'The Midnight Library')
+        self.assertEqual(summary[0][2], 'https://www.goodreads.com/choiceawards/best-fiction-books-2020')
 
-    #         # check that each tuple has a length of 3
-
-    #     # check that the first tuple is made up of the following 3 strings:'Fiction', "The Midnight Library", 'https://www.goodreads.com/choiceawards/best-fiction-books-2020'
-
-    #     # check that the last tuple is made up of the following 3 strings: 'Picture Books', 'A Beautiful Day in the Neighborhood: The Poetry of Mister Rogers', 'https://www.goodreads.com/choiceawards/best-picture-books-2020'
+        # check that the last tuple is made up of the following 3 strings: 'Picture Books', 'Antiracist Baby', 'https://www.goodreads.com/choiceawards/best-picture-books-2020'
+        self.assertEqual(summary[19][0], 'Picture Books')
+        self.assertEqual(summary[19][1], 'Antiracist Baby')
+        self.assertEqual(summary[19][2], 'https://www.goodreads.com/choiceawards/best-picture-books-2020')
 
 
     # def test_write_csv(self):
@@ -208,8 +249,7 @@ class TestCases(unittest.TestCase):
 
     #     # check that the next row is 'Harry Potter and the Deathly Hallows (Harry Potter, #7)', 'J.K. Rowling'
 
-    #     # check that the last row is 'Harry Potter: The Prequel (Harry Potter, #0.5)', 'Julian Harrison (Introduction)'
-
+    #     # check that the last row is 'Harry Potter: The Prequel (Harry Potter, #0.5)', 'J.K. Rowling'
 
 
 if __name__ == '__main__':
